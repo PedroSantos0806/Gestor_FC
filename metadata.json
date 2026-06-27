@@ -1,0 +1,6 @@
+{
+  "name": "Gestor FC",
+  "description": "Gerenciamento completo de campeonatos de futebol: registro de jogadores, tabelas de classificação, súmulas em tempo real, avaliações de arbitragem e campo, inscrições e pagamentos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
