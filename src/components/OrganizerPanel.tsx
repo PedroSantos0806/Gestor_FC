@@ -707,8 +707,8 @@ export const OrganizerPanel: React.FC = () => {
                 Plano Ativo: <span className="text-[#00FF87] font-extrabold">
                   {currentUser?.subscriptionPlan === 'plan_80' && 'Campeonato Único (R$ 80)'}
                   {currentUser?.subscriptionPlan === 'plan_300' && 'SaaS Gold (R$ 300/mês)'}
-                  {currentUser?.subscriptionPlan === 'plan_1500' && 'SaaS Pro (R$ 1.500/mês)'}
-                  {currentUser?.subscriptionPlan === 'plan_3000' && 'League Master (R$ 3.000/mês)'}
+                  {currentUser?.subscriptionPlan === 'plan_1500' && 'SaaS Pro (R$ 1.500/6 meses)'}
+                  {currentUser?.subscriptionPlan === 'plan_3000' && 'League Master (R$ 3.000/ano)'}
                   {!currentUser?.subscriptionPlan && 'Nenhum / Gratuito (Sandbox)'}
                 </span>
               </span>

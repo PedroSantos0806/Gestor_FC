@@ -154,119 +154,26 @@ function DashboardView() {
         )}
       </main>
 
-      {/* Supabase connection guide & Technical Info */}
-      <div className="bg-[#16191F] text-[#8E9299] border-t border-[#2D3139] py-10 px-4 text-xs font-mono">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          
-          <div className="space-y-3">
-            <h4 className="text-white font-sans font-bold text-sm flex items-center gap-1.5">
-              <Database className="w-4 h-4 text-[#00FF87]" />
-              Sincronização Ativa com Supabase
-            </h4>
-            <p className="text-[#8E9299] leading-relaxed font-sans font-normal text-xs">
-              Conexão inicializada com sucesso usando a URL pública e a chave anon_public fornecidas. 
-              Utilizamos um motor de persistência inteligente local-first com cache em LocalStorage 
-              para performance impecável e redundância.
-            </p>
-            <div className="bg-[#0F1115] p-3 rounded-xl border border-[#2D3139] text-[10px] space-y-1 text-[#8E9299]">
-              <p>URL: <span className="text-[#E4E7EB]">https://rknyiklwjrhlwjqrarpf.supabase.co</span></p>
-              <p>Chave: <span className="text-[#E4E7EB]">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpX...DWPknc</span></p>
-              <p>Status: <span className="text-[#00FF87] font-bold">Conectado / Inicializado</span></p>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <h4 className="text-white font-sans font-bold text-sm">Scripts SQL de criação do Banco</h4>
-            <p className="text-[#8E9299] leading-relaxed font-sans font-normal text-xs">
-              Para instanciar as tabelas em seu Supabase com integridade referencial, execute o script de criação no seu editor de SQL.
-            </p>
-            <div className="bg-[#0F1115] p-3 rounded-xl border border-[#2D3139] text-[10px] max-h-32 overflow-y-auto">
-              <pre className="text-[#8E9299] leading-tight">
-                {/* code block inside pre */}
-{`-- Criar Tabelas Supabase para Copa Futebol
-CREATE TABLE profiles (
-  id TEXT PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  name TEXT NOT NULL,
-  role TEXT NOT NULL,
-  phone TEXT,
-  subscription_status TEXT,
-  subscription_plan TEXT,
-  subscription_expires_at TEXT,
-  tournaments_paid_count INT DEFAULT 0
-);
-
-CREATE TABLE tournaments (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  sport_name TEXT NOT NULL,
-  category TEXT NOT NULL,
-  year INT NOT NULL,
-  format TEXT NOT NULL,
-  has_referees BOOLEAN NOT NULL,
-  status TEXT NOT NULL,
-  creator_id TEXT REFERENCES profiles(id),
-  num_qualifiers INT DEFAULT 4,
-  created_at TEXT NOT NULL
-);
-
-CREATE TABLE teams (
-  id TEXT PRIMARY KEY,
-  tournament_id TEXT REFERENCES tournaments(id),
-  name TEXT NOT NULL,
-  logo_url TEXT,
-  owner_id TEXT REFERENCES profiles(id),
-  category TEXT NOT NULL,
-  status TEXT NOT NULL
-);
-
-CREATE TABLE players (
-  id TEXT PRIMARY KEY,
-  team_id TEXT REFERENCES teams(id),
-  name TEXT NOT NULL,
-  cpf TEXT NOT NULL,
-  birth_date TEXT NOT NULL,
-  photo_url TEXT,
-  validation_status TEXT DEFAULT 'pending',
-  validation_notes TEXT
-);
-
-CREATE TABLE matches (
-  id TEXT PRIMARY KEY,
-  tournament_id TEXT REFERENCES tournaments(id),
-  home_team_id TEXT REFERENCES teams(id),
-  away_team_id TEXT REFERENCES teams(id),
-  round INT NOT NULL,
-  date TEXT NOT NULL,
-  time TEXT NOT NULL,
-  location TEXT NOT NULL,
-  referee_id TEXT,
-  assistant_1_id TEXT,
-  assistant_2_id TEXT,
-  fourth_referee_id TEXT,
-  score_home INT,
-  score_away INT,
-  status TEXT DEFAULT 'scheduled',
-  sumula_written BOOLEAN DEFAULT false,
-  home_approved BOOLEAN DEFAULT false,
-  away_approved BOOLEAN DEFAULT false,
-  organizer_approved BOOLEAN DEFAULT false
-);`}
-              </pre>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
       {/* App visual footer */}
-      <footer className="bg-[#0F1115] text-[#8E9299] py-6 border-t border-[#2D3139] text-center text-xs">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-3">
-          <p>© 2026 Gestor FC - Gestão Profissional de Futebol. Todos os direitos reservados.</p>
-          <div className="flex gap-4">
+      <footer className="bg-[#16191F] text-[#8E9299] py-8 border-t border-[#2D3139] text-xs">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="space-y-1 text-center md:text-left">
+            <p className="font-semibold text-white">© 2026 Gestor FC - Gestão Profissional de Futebol. Todos os direitos reservados.</p>
+            <p className="text-[11px] text-[#8E9299]">Desenvolvido com excelência pela <span className="text-[#00FF87] font-bold">Aurora Tech</span></p>
+          </div>
+          <div className="flex flex-wrap gap-5 justify-center items-center">
+            <a href="https://wa.me/5511992835438?text=Acessei%20o%20sistema%20do%20Gestor%20FC%20e%20tenho%20algumas%20d%C3%BAvidas%2C%20pode%20me%20ajudar%3F" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               className="bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/30 px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.847.001-2.63-1.019-5.101-2.872-6.957C16.608 1.995 14.137.974 11.485.974c-5.443 0-9.866 4.414-9.868 9.849-.001 1.802.487 3.53 1.412 5.04l-.998 3.642 3.73-.977c1.52.831 3.126 1.27 4.753 1.275zM17.43 14.38c-.32-.16-1.89-.93-2.185-1.04-.294-.11-.51-.16-.723.16-.214.32-.827 1.04-1.012 1.25-.185.21-.37.24-.69.08-.32-.16-1.353-.5-2.578-1.593-.953-.85-1.596-1.9-1.783-2.22-.185-.32-.02-.49.14-.65.145-.145.32-.37.48-.56.16-.19.21-.32.32-.54.11-.22.05-.41-.03-.57-.08-.16-.723-1.74-.99-2.4-.26-.62-.52-.54-.723-.55-.185-.01-.397-.01-.61-.01-.213 0-.56.08-.85.4-.294.32-1.127 1.1-1.127 2.68 0 1.58 1.149 3.11 1.309 3.32.16.21 2.262 3.45 5.48 4.84.765.33 1.362.528 1.828.675.77.244 1.47.21 2.02.128.614-.09 1.89-.77 2.155-1.48.265-.7.265-1.31.185-1.43-.08-.12-.294-.2-.614-.36z"/>
+              </svg>
+              Suporte WhatsApp
+            </a>
             <a href="#" className="hover:text-white transition-colors">Termos</a>
             <a href="#" className="hover:text-white transition-colors">Privacidade</a>
-            <a href="#" className="hover:text-white transition-colors">Suporte</a>
           </div>
         </div>
       </footer>

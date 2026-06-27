@@ -114,13 +114,15 @@ export const PLANS_INFO = [
   {
     id: 'plan_80',
     name: 'Campeonato Único',
-    price: 'R$ 80',
+    price: 'R$ 80 / campeonato',
     description: 'Apenas um campeonato com tabela de classificação padrão',
     features: [
       '1 campeonato ativo',
       'Tabela de classificação inteligente',
       'Estatísticas básicas de jogos',
-      'Suporte via e-mail'
+      '❌ Sem súmula online preenchida por árbitro',
+      '❌ Sem avaliações de campos ou árbitros',
+      '❌ Sem validação automática de CPF'
     ],
     link: 'https://mpago.la/2uzuD8e'
   },
@@ -131,21 +133,22 @@ export const PLANS_INFO = [
     description: 'Súmula online oficial e validação de atletas de elite',
     features: [
       'Campeonatos simultâneos limitados',
-      'Súmula online interativa de campo',
-      'Avaliações de arbitragem e estado do campo',
-      'Validação automática de CPF de atletas com a Receita Federal'
+      'Súmula online preenchida pelo árbitro',
+      'Validação de CPF dos inscritos (Receita Federal)',
+      'Avaliações de Juízes e de Campos de Jogo',
+      'Suporte via e-mail e painel'
     ],
     link: 'https://mpago.la/1J1FJPp'
   },
   {
     id: 'plan_1500',
-    name: 'SaaS Pro',
-    price: 'R$ 1.500 / mês',
-    description: 'Relatórios completos e exportação profissional de dados',
+    name: 'SaaS Pro (Semestral)',
+    price: 'R$ 1.500 / a cada 6 meses',
+    description: 'Todos os recursos inclusos e opção de exportar dados',
     features: [
-      'Todos os recursos do plano de R$ 300',
-      'Painel de exportação de dados (Excel, CSV e JSON)',
-      'Backup automático na nuvem em tempo real',
+      'Todos os recursos do plano SaaS Gold',
+      'Opção de exportar dados (Excel, CSV, JSON)',
+      'Acesso semestral unificado (R$250/mês equivalente)',
       'Relatório analítico de atletas e cartões',
       'Suporte prioritário via WhatsApp'
     ],
@@ -153,15 +156,14 @@ export const PLANS_INFO = [
   },
   {
     id: 'plan_3000',
-    name: 'League Master',
-    price: 'R$ 3.000 / mês',
-    description: 'Quantidade ilimitada de torneios e alertas automáticos via WhatsApp',
+    name: 'League Master (Anual)',
+    price: 'R$ 3.000 / por ano',
+    description: 'SaaS ilimitado, benefícios completos e alertas via WhatsApp',
     features: [
-      'Todos os recursos do plano de R$ 1.500',
-      'Quantidade de campeonatos ilimitados',
-      'Disparos automatizados de alertas e novidades de torneios no WhatsApp',
-      'Suporte VIP com Gerente de Contas dedicado',
-      'Personalização de marca e cores do painel (White Label)'
+      'Todos os benefícios do plano SaaS Pro',
+      'Quantidade de campeonatos ILIMITADOS por ano',
+      'Integração oficial com WhatsApp para alertas automáticos',
+      'Suporte VIP 24h e assessoria da Aurora Tech'
     ],
     link: 'https://mpago.la/2WLyT5V'
   }
