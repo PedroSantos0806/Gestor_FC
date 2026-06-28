@@ -25,7 +25,8 @@ interface DatabaseContextType {
   supabaseConfig: { url: string; anonKey: string; connected: boolean };
   
   // Actions
-  login: (email: string) => boolean;
+  loginWithPassword: (email: string, password?: string) => { success: boolean; message: string };
+  registerUser: (name: string, email: string, role: UserRole, password?: string) => { success: boolean; message: string };
   logout: () => void;
   switchRole: (role: UserRole) => void;
   createTournament: (tournament: Omit<Tournament, 'id' | 'creator_id' | 'created_at' | 'status'>) => Tournament;
@@ -84,14 +85,63 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const localCurrentUser = localStorage.getItem('fc_current_user');
 
     if (localProfiles) {
-      setProfiles(JSON.parse(localProfiles));
-      setTournaments(JSON.parse(localTournaments || '[]'));
+      let parsedProfiles: UserProfile[] = JSON.parse(localProfiles);
+      // Ensure pedro@auroratech.com always exists with plan_3000
+      const hasPedro = parsedProfiles.some(p => p.email.toLowerCase() === 'pedro@auroratech.com');
+      if (!hasPedro) {
+        const pedroProfile: UserProfile = {
+          id: 'org_pedro',
+          email: 'pedro@auroratech.com',
+          password: 'Admin1234',
+          name: 'Pedro (Aurora Tech)',
+          role: 'organizer',
+          phone: '(11) 99283-5438',
+          subscriptionStatus: 'active',
+          subscriptionPlan: 'plan_3000',
+          subscriptionExpiresAt: '2027-12-31',
+          tournamentsPaidCount: 0
+        };
+        parsedProfiles = [pedroProfile, ...parsedProfiles];
+      } else {
+        parsedProfiles = parsedProfiles.map(p => {
+          if (p.email.toLowerCase() === 'pedro@auroratech.com') {
+            return {
+              ...p,
+              password: 'Admin1234',
+              role: 'organizer' as const,
+              subscriptionStatus: 'active' as const,
+              subscriptionPlan: 'plan_3000' as const
+            };
+          }
+          return p;
+        });
+      }
+      
+      setProfiles(parsedProfiles);
+      let parsedTournaments: Tournament[] = JSON.parse(localTournaments || '[]');
+      parsedTournaments = parsedTournaments.map(t => {
+        if (t.creator_id === 'org_1') {
+          return { ...t, creator_id: 'org_pedro' };
+        }
+        return t;
+      });
+      setTournaments(parsedTournaments);
       setTeams(JSON.parse(localTeams || '[]'));
       setPlayers(JSON.parse(localPlayers || '[]'));
       setMatches(JSON.parse(localMatches || '[]'));
       setEvents(JSON.parse(localEvents || '[]'));
       setInvitations(JSON.parse(localInvitations || '[]'));
-      setCurrentUser(JSON.parse(localCurrentUser || 'null'));
+      
+      const loadedUser = localCurrentUser ? JSON.parse(localCurrentUser) : null;
+      // If pedro was the previous user, ensure his roles and plans are active
+      if (loadedUser && loadedUser.email.toLowerCase() === 'pedro@auroratech.com') {
+        const updatedPedro = parsedProfiles.find(p => p.email.toLowerCase() === 'pedro@auroratech.com') || loadedUser;
+        setCurrentUser(updatedPedro);
+      } else {
+        setCurrentUser(loadedUser);
+      }
+      
+      localStorage.setItem('fc_profiles', JSON.stringify(parsedProfiles));
     } else {
       // First time initialization
       setProfiles(INITIAL_PROFILES);
@@ -101,7 +151,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       setMatches(INITIAL_MATCHES);
       setEvents(INITIAL_EVENTS);
       setInvitations(INITIAL_INVITATIONS);
-      setCurrentUser(INITIAL_PROFILES[0]); // Default to first user (Organizer)
+      setCurrentUser(INITIAL_PROFILES[0]); // Pedro (Aurora Tech) is INITIAL_PROFILES[0]
       
       saveToLocal(
         INITIAL_PROFILES,
@@ -143,27 +193,42 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     saveToLocal(updatedProfiles, updatedTournaments, updatedTeams, updatedPlayers, updatedMatches, updatedEvents, updatedInvitations, updatedUser);
   };
 
-  // Switch role or simulate login
-  const login = (email: string): boolean => {
-    const found = profiles.find(p => p.email.toLowerCase() === email.toLowerCase());
-    if (found) {
-      setCurrentUser(found);
-      persist(profiles, tournaments, teams, players, matches, events, invitations, found);
-      return true;
+  // Professional Email & Password Auth System
+  const loginWithPassword = (email: string, password?: string): { success: boolean; message: string } => {
+    const found = profiles.find(p => p.email.toLowerCase() === email.trim().toLowerCase());
+    if (!found) {
+      return { success: false, message: 'Usuário não cadastrado. Cadastre uma nova conta.' };
     }
-    // Auto-create profile if typing a new email to make sandbox highly interactive
+    const expectedPassword = found.password || '123';
+    if (password && expectedPassword !== password) {
+      return { success: false, message: 'Senha incorreta. Verifique suas credenciais.' };
+    }
+    setCurrentUser(found);
+    persist(profiles, tournaments, teams, players, matches, events, invitations, found);
+    return { success: true, message: 'Login realizado com sucesso!' };
+  };
+
+  const registerUser = (name: string, email: string, role: UserRole, password?: string): { success: boolean; message: string } => {
+    const emailLower = email.trim().toLowerCase();
+    const exists = profiles.some(p => p.email.toLowerCase() === emailLower);
+    if (exists) {
+      return { success: false, message: 'Este e-mail já está em uso por outro usuário.' };
+    }
+
     const newProfile: UserProfile = {
       id: 'usr_' + Date.now(),
-      email,
-      name: email.split('@')[0].toUpperCase(),
-      role: 'team_owner', // default role
+      email: emailLower,
+      password: password || '123',
+      name: name.trim(),
+      role,
       subscriptionStatus: 'inactive'
     };
+
     const updated = [...profiles, newProfile];
     setProfiles(updated);
     setCurrentUser(newProfile);
     persist(updated, tournaments, teams, players, matches, events, invitations, newProfile);
-    return true;
+    return { success: true, message: 'Cadastro realizado com sucesso!' };
   };
 
   const logout = () => {
@@ -593,7 +658,8 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       invitations,
       currentUser,
       supabaseConfig,
-      login,
+      loginWithPassword,
+      registerUser,
       logout,
       switchRole,
       createTournament,

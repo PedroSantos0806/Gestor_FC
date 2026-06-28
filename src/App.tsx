@@ -5,7 +5,6 @@
 
 import React, { useState } from 'react';
 import { DatabaseProvider, useDatabase } from './context/DatabaseContext';
-import { RoleSwitcher } from './components/RoleSwitcher';
 import { LandingPage } from './components/LandingPage';
 import { PublicStandings } from './components/PublicStandings';
 import { OrganizerPanel } from './components/OrganizerPanel';
@@ -13,12 +12,64 @@ import { RefereePanel } from './components/RefereePanel';
 import { TeamOwnerPanel } from './components/TeamOwnerPanel';
 import { 
   Trophy, LogIn, LogOut, LayoutDashboard, 
-  MapPin, Award, CheckCircle, Database, HelpCircle 
+  MapPin, Award, CheckCircle, Database, HelpCircle, X, Shield, Lock, Mail, User
 } from 'lucide-react';
+import { UserRole } from './types';
 
 function DashboardView() {
-  const { currentUser, logout } = useDatabase();
-  const [viewDashboard, setViewDashboard] = useState(true);
+  const { currentUser, logout, loginWithPassword, registerUser } = useDatabase();
+  const [viewDashboard, setViewDashboard] = useState(currentUser ? true : false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  
+  // Form states
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [authRole, setAuthRole] = useState<UserRole>('organizer');
+  const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
+
+  const handleAuthSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthSuccess('');
+
+    if (authMode === 'login') {
+      const res = loginWithPassword(authEmail, authPassword);
+      if (res.success) {
+        setAuthSuccess(res.message);
+        setTimeout(() => {
+          setShowAuthModal(false);
+          setViewDashboard(true);
+          setAuthEmail('');
+          setAuthPassword('');
+          setAuthSuccess('');
+        }, 1200);
+      } else {
+        setAuthError(res.message);
+      }
+    } else {
+      if (!authName.trim()) {
+        setAuthError('Por favor, informe seu nome completo.');
+        return;
+      }
+      const res = registerUser(authName, authEmail, authRole, authPassword);
+      if (res.success) {
+        setAuthSuccess(res.message);
+        setTimeout(() => {
+          setShowAuthModal(false);
+          setViewDashboard(true);
+          setAuthEmail('');
+          setAuthPassword('');
+          setAuthName('');
+          setAuthSuccess('');
+        }, 1200);
+      } else {
+        setAuthError(res.message);
+      }
+    }
+  };
 
   const renderDashboardPanel = () => {
     if (!currentUser) return null;
@@ -35,19 +86,16 @@ function DashboardView() {
   return (
     <div className="min-h-screen bg-[#0F1115] text-[#E4E7EB] flex flex-col font-sans">
       
-      {/* Top Interactive Sandbox Bar */}
-      <RoleSwitcher />
-
       {/* Main Professional Navbar */}
       <header className="bg-[#16191F] border-b border-[#2D3139] sticky top-0 z-40 shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setViewDashboard(false)}>
             <div className="w-10 h-10 bg-gradient-to-br from-[#00FF87] to-[#00D1FF] rounded-lg flex items-center justify-center text-[#0F1115] font-black italic shadow-[0_0_15px_rgba(0,255,135,0.25)]">
-              GP
+              GFC
             </div>
             <div>
               <span className="font-extrabold text-white text-lg tracking-tight font-sans">
-                GOLAÇO<span className="text-[#00FF87]">PRO</span>
+                GESTOR<span className="text-[#00FF87]">FC</span>
               </span>
               <span className="text-[10px] text-[#8E9299] font-mono block uppercase leading-none mt-0.5">Súmula & Campeonatos</span>
             </div>
@@ -99,8 +147,10 @@ function DashboardView() {
             ) : (
               <button
                 onClick={() => {
-                  const selectButton = document.getElementById('btn-open-login-dropdown');
-                  if (selectButton) selectButton.click();
+                  setAuthMode('login');
+                  setAuthError('');
+                  setAuthSuccess('');
+                  setShowAuthModal(true);
                 }}
                 className="bg-[#00FF87] hover:bg-[#00FF87]/90 text-[#0F1115] font-extrabold text-xs py-2 px-4 rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm flex items-center gap-1.5"
               >
@@ -118,17 +168,6 @@ function DashboardView() {
           /* Logged In Dashboard Container */
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
             
-            {/* Quick Helper Indicator */}
-            <div className="bg-[#16191F] border border-[#2D3139] text-[#E4E7EB] p-4 rounded-2xl text-xs sm:text-sm">
-              <p className="font-bold flex items-center gap-1.5 text-[#00FF87] mb-1">
-                <HelpCircle className="w-4 h-4 text-[#00FF87] shrink-0" />
-                Dica de Homologação da Sandbox:
-              </p>
-              <p className="leading-relaxed text-[#8E9299] font-medium">
-                Você pode alternar entre os papéis de <strong>Organizador</strong>, <strong>Árbitro</strong> e <strong>Dono de Time</strong> a qualquer momento usando a barra cinza no topo da tela para testar o fluxo de pontuação da partida e a súmula online com aprovação dupla e validação de CPF!
-              </p>
-            </div>
-
             {/* Render selected workspace */}
             {renderDashboardPanel()}
 
@@ -145,14 +184,172 @@ function DashboardView() {
               if (currentUser) {
                 setViewDashboard(true);
               } else {
-                const selectButton = document.getElementById('btn-open-login-dropdown');
-                if (selectButton) selectButton.click();
+                setAuthMode('register');
+                setAuthError('');
+                setAuthSuccess('');
+                setShowAuthModal(true);
               }
             }} />
             <PublicStandings />
           </div>
         )}
       </main>
+
+      {/* AUTHENTICATION MODAL (LOGIN & SIGNUP) */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-[#0F1115]/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#16191F] border border-[#2D3139] rounded-2xl shadow-2xl overflow-hidden relative">
+            
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowAuthModal(false)}
+              className="absolute top-4 right-4 text-[#8E9299] hover:text-white transition-all"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Tabs header */}
+            <div className="flex border-b border-[#2D3139]">
+              <button
+                onClick={() => {
+                  setAuthMode('login');
+                  setAuthError('');
+                  setAuthSuccess('');
+                }}
+                className={`flex-1 py-4 text-center text-sm font-bold transition-all ${
+                  authMode === 'login' 
+                    ? 'text-[#00FF87] border-b-2 border-[#00FF87] bg-[#1A1D23]' 
+                    : 'text-[#8E9299] hover:text-white'
+                }`}
+              >
+                Entrar / Login
+              </button>
+              <button
+                onClick={() => {
+                  setAuthMode('register');
+                  setAuthError('');
+                  setAuthSuccess('');
+                }}
+                className={`flex-1 py-4 text-center text-sm font-bold transition-all ${
+                  authMode === 'register' 
+                    ? 'text-[#00FF87] border-b-2 border-[#00FF87] bg-[#1A1D23]' 
+                    : 'text-[#8E9299] hover:text-white'
+                }`}
+              >
+                Criar Conta
+              </button>
+            </div>
+
+            {/* Form body */}
+            <form onSubmit={handleAuthSubmit} className="p-6 space-y-4">
+              
+              <div className="text-center mb-2">
+                <h3 className="text-white text-lg font-extrabold">
+                  {authMode === 'login' ? 'Bem-vindo ao GestorFC' : 'Crie sua conta profissional'}
+                </h3>
+                <p className="text-[#8E9299] text-xs mt-1">
+                  {authMode === 'login' 
+                    ? 'Acesse seu painel administrativo' 
+                    : 'Registre-se para gerenciar ou participar de campeonatos'}
+                </p>
+              </div>
+
+              {authError && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold p-3 rounded-xl">
+                  {authError}
+                </div>
+              )}
+
+              {authSuccess && (
+                <div className="bg-[#00FF87]/10 border border-[#00FF87]/30 text-[#00FF87] text-xs font-semibold p-3 rounded-xl">
+                  {authSuccess}
+                </div>
+              )}
+
+              {authMode === 'register' && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#8E9299] uppercase">Seu Nome</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 w-4 h-4 text-[#8E9299]" />
+                    <input
+                      type="text"
+                      placeholder="Ex: Pedro Silva"
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      className="w-full bg-[#0F1115] border border-[#2D3139] rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-[#00FF87] transition-all"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#8E9299] uppercase">E-mail</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 w-4 h-4 text-[#8E9299]" />
+                  <input
+                    type="email"
+                    placeholder="Ex: pedro@auroratech.com"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    className="w-full bg-[#0F1115] border border-[#2D3139] rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-[#00FF87] transition-all"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-[#8E9299] uppercase">Senha</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 w-4 h-4 text-[#8E9299]" />
+                  <input
+                    type="password"
+                    placeholder="Digite sua senha de acesso"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    className="w-full bg-[#0F1115] border border-[#2D3139] rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-[#00FF87] transition-all"
+                    required
+                  />
+                </div>
+              </div>
+
+              {authMode === 'register' && (
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-[#8E9299] uppercase">Seu Papel no Futebol</label>
+                  <select
+                    value={authRole}
+                    onChange={(e) => setAuthRole(e.target.value as UserRole)}
+                    className="w-full bg-[#0F1115] border border-[#2D3139] rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-[#00FF87] transition-all"
+                  >
+                    <option value="organizer">Organizador (Cria e vende planos)</option>
+                    <option value="team_owner">Dono de Time / Representante (Convidado)</option>
+                    <option value="referee">Árbitro Oficial / Juiz (Convidado)</option>
+                  </select>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                className="w-full bg-[#00FF87] hover:bg-[#00FF87]/90 text-[#0F1115] font-black py-3 rounded-xl text-xs sm:text-sm shadow-md transition-all uppercase tracking-wider"
+              >
+                {authMode === 'login' ? 'Acessar Conta' : 'Criar Minha Conta'}
+              </button>
+
+              {/* Dev Credentials Help Hint */}
+              <div className="bg-[#1A1D23] border border-[#2D3139] p-3 rounded-xl text-[11px] text-[#8E9299] space-y-1 font-mono">
+                <p className="text-white font-bold font-sans">Acesso Homologado Aurora Tech:</p>
+                <p>E-mail: <span className="text-[#00FF87]">pedro@auroratech.com</span></p>
+                <p>Senha: <span className="text-[#00FF87]">Admin1234</span></p>
+                <p className="text-[10px] mt-1 font-sans text-slate-500 italic">
+                  *Esta conta já possui o plano de R$ 3000/ano ativado de teste! Outras contas usam senha padrão '123'.
+                </p>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
 
       {/* App visual footer */}
       <footer className="bg-[#16191F] text-[#8E9299] py-8 border-t border-[#2D3139] text-xs">

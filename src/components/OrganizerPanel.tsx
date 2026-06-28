@@ -17,7 +17,7 @@ export const OrganizerPanel: React.FC = () => {
   const { 
     currentUser, tournaments, teams, matches, events, invitations, players,
     createTournament, sendInvitation, organizerApproveMatch, rateReferee,
-    subscribeSaaS, profiles
+    subscribeSaaS, profiles, resetDatabase
   } = useDatabase();
 
   const [activeTab, setActiveTab] = useState<'my_tournaments' | 'create_tournament' | 'invitations' | 'approvals' | 'saas' | 'export' | 'whatsapp'>('my_tournaments');
@@ -311,106 +311,128 @@ export const OrganizerPanel: React.FC = () => {
 
       {/* TAB CONTENT: CREATE TOURNAMENT */}
       {activeTab === 'create_tournament' && (
-        <form onSubmit={handleCreateTournament} className="max-w-xl bg-[#1A1D23] border border-[#2D3139] rounded-2xl p-5 space-y-4">
-          <h3 className="font-bold text-white text-sm pb-2 border-b border-[#2D3139]">Configuração de Novo Campeonato</h3>
-          
-          {successMsg && (
-            <div className="bg-[#00FF87]/10 border border-[#00FF87]/30 text-[#00FF87] text-xs font-semibold p-3 rounded-xl flex items-center gap-2">
-              <Check className="w-4 h-4 shrink-0 text-[#00FF87]" />
-              {successMsg}
+        !(currentUser?.subscriptionPlan && currentUser?.subscriptionStatus === 'active') ? (
+          <div className="max-w-xl bg-[#1A1D23] border border-[#2D3139] rounded-2xl p-6 text-center space-y-4">
+            <div className="w-16 h-16 bg-red-500/10 text-red-400 rounded-full flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-8 h-8" />
             </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <h3 className="font-bold text-white text-base">Plano Ativo Necessário</h3>
+            <p className="text-xs sm:text-sm text-[#8E9299] leading-relaxed">
+              Você precisa possuir um plano SaaS assinado e ativo para liberar a criação de campeonatos. 
+              Somente organizadores de campeonatos pagam pelo uso da plataforma. Donos de times e árbitros participam gratuitamente por meio de convites de inscrição.
+            </p>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab('saas')}
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-[#00FF87] hover:bg-[#00FF87]/90 text-[#0F1115] font-black rounded-xl text-xs uppercase tracking-wider transition-all"
+              >
+                Ver Planos SaaS Ativos
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleCreateTournament} className="max-w-xl bg-[#1A1D23] border border-[#2D3139] rounded-2xl p-5 space-y-4">
+            <h3 className="font-bold text-white text-sm pb-2 border-b border-[#2D3139]">Configuração de Novo Campeonato</h3>
             
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Nome do Campeonato</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ex: Copa da Várzea Vila Real 2026"
-                className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50 focus:border-[#00FF87]"
-                required
-              />
-            </div>
+            {successMsg && (
+              <div className="bg-[#00FF87]/10 border border-[#00FF87]/30 text-[#00FF87] text-xs font-semibold p-3 rounded-xl flex items-center gap-2">
+                <Check className="w-4 h-4 shrink-0 text-[#00FF87]" />
+                {successMsg}
+              </div>
+            )}
 
-            <div>
-              <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Modalidade Esportiva</label>
-              <select
-                value={sportName}
-                onChange={(e) => setSportName(e.target.value)}
-                className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
-              >
-                <option value="Futebol de Campo">⚽️ Futebol de Campo</option>
-                <option value="Futsal">⚽️ Futsal</option>
-                <option value="Futebol Society">⚽️ Futebol Society</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Categoria de Idade</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
-              >
-                <option value="Adulto Livre">Adulto Livre</option>
-                <option value="Sub-17">Sub-17 (Idade limite)</option>
-                <option value="Sub-15">Sub-15 (Idade limite)</option>
-                <option value="Master 40+">Master 40+</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Ano da Edição</label>
-              <input
-                type="number"
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
-                className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Passam de fase (Playoffs)</label>
-              <input
-                type="number"
-                value={numQualifiers}
-                onChange={(e) => setNumQualifiers(Number(e.target.value))}
-                min={1}
-                max={16}
-                placeholder="Ex: 4 times avançam"
-                className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
-                required
-              />
-            </div>
-
-            <div className="sm:col-span-2 py-2">
-              <div className="flex items-center justify-between bg-[#16191F] border border-[#2D3139] p-3 rounded-xl">
-                <div>
-                  <span className="text-xs font-bold text-[#E4E7EB] uppercase block">Torneio com Arbitragem Oficial?</span>
-                  <span className="text-[10px] text-[#8E9299]">Existem campeonatos de várzea sem arbitragem contratada.</span>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Nome do Campeonato</label>
                 <input
-                  type="checkbox"
-                  checked={hasReferees}
-                  onChange={(e) => setHasReferees(e.target.checked)}
-                  className="w-5 h-5 accent-[#00FF87] cursor-pointer"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ex: Copa da Várzea Vila Real 2026"
+                  className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50 focus:border-[#00FF87]"
+                  required
                 />
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Modalidade Esportiva</label>
+                <select
+                  value={sportName}
+                  onChange={(e) => setSportName(e.target.value)}
+                  className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
+                >
+                  <option value="Futebol de Campo">⚽️ Futebol de Campo</option>
+                  <option value="Futsal">⚽️ Futsal</option>
+                  <option value="Futebol Society">⚽️ Futebol Society</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Categoria de Idade</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
+                >
+                  <option value="Adulto Livre">Adulto Livre</option>
+                  <option value="Sub-17">Sub-17 (Idade limite)</option>
+                  <option value="Sub-15">Sub-15 (Idade limite)</option>
+                  <option value="Master 40+">Master 40+</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Ano da Edição</label>
+                <input
+                  type="number"
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Passam de fase (Playoffs)</label>
+                <input
+                  type="number"
+                  value={numQualifiers}
+                  onChange={(e) => setNumQualifiers(Number(e.target.value))}
+                  min={1}
+                  max={16}
+                  placeholder="Ex: 4 times avançam"
+                  className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
+                  required
+                />
+              </div>
+
+              <div className="sm:col-span-2 py-2">
+                <div className="flex items-center justify-between bg-[#16191F] border border-[#2D3139] p-3 rounded-xl">
+                  <div>
+                    <span className="text-xs font-bold text-[#E4E7EB] uppercase block">Torneio com Arbitragem Oficial?</span>
+                    <span className="text-[10px] text-[#8E9299]">Existem campeonatos de várzea sem arbitragem contratada.</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={hasReferees}
+                    onChange={(e) => setHasReferees(e.target.checked)}
+                    className="w-5 h-5 accent-[#00FF87] cursor-pointer"
+                  />
+                </div>
+              </div>
+
             </div>
 
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-[#00FF87] hover:bg-[#00FF87]/90 text-[#0F1115] font-black text-xs sm:text-sm py-2.5 rounded-xl transition-colors shadow-md shadow-[#00FF87]/10 cursor-pointer"
-          >
-            Confirmar e Registrar Campeonato
-          </button>
-        </form>
+            <button
+              type="submit"
+              className="w-full bg-[#00FF87] hover:bg-[#00FF87]/90 text-[#0F1115] font-black text-xs sm:text-sm py-2.5 rounded-xl transition-colors shadow-md shadow-[#00FF87]/10 cursor-pointer"
+            >
+              Confirmar e Registrar Campeonato
+            </button>
+          </form>
+        )
       )}
 
       {/* TAB CONTENT: INVITATIONS */}
@@ -798,6 +820,32 @@ export const OrganizerPanel: React.FC = () => {
                 </div>
               );
             })}
+          </div>
+
+          {/* Developer Reset Box */}
+          <div className="bg-[#1D1212]/30 border border-red-900/30 rounded-2xl p-6 mt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="space-y-1 text-center md:text-left">
+              <h4 className="font-extrabold text-white text-sm flex items-center gap-2 justify-center md:justify-start">
+                <RefreshCw className="w-4 h-4 text-[#00FF87] animate-spin" />
+                Ambiente de Homologação & Teste Real
+              </h4>
+              <p className="text-xs text-[#8E9299] max-w-xl">
+                Deseja restaurar todas as informações padrão de testes no banco de dados local? 
+                Isso recarregará as ligas, os jogos prontos com súmulas preenchidas pelo árbitro Marcos, avaliações, atletas válidos/inválidos e as contas padrão de testes da Aurora Tech.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('Tem certeza de que deseja resetar todo o banco de dados local para os dados padrão de homologação do GestorFC?')) {
+                  resetDatabase();
+                  alert('🔄 Banco de dados restaurado com sucesso para o estado original de testes! Conta pedro@auroratech.com logada e ativada com o plano League Master.');
+                }
+              }}
+              className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap cursor-pointer"
+            >
+              Resetar para Dados de Fábrica
+            </button>
           </div>
         </div>
       )}

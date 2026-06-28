@@ -8,6 +8,7 @@ export type UserRole = 'organizer' | 'referee' | 'team_owner';
 export interface UserProfile {
   id: string;
   email: string;
+  password?: string;
   name: string;
   role: UserRole;
   phone?: string;

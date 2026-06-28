@@ -7,8 +7,21 @@ import { Tournament, Team, Player, Match, MatchEvent, UserProfile, Invitation } 
 
 export const INITIAL_PROFILES: UserProfile[] = [
   {
+    id: 'org_pedro',
+    email: 'pedro@auroratech.com',
+    password: 'Admin1234',
+    name: 'Pedro (Aurora Tech)',
+    role: 'organizer',
+    phone: '(11) 99283-5438',
+    subscriptionStatus: 'active',
+    subscriptionPlan: 'plan_3000',
+    subscriptionExpiresAt: '2027-12-31',
+    tournamentsPaidCount: 0
+  },
+  {
     id: 'org_1',
     email: 'organizador@torneio.com',
+    password: '123',
     name: 'Carlos Silva (Organizador)',
     role: 'organizer',
     phone: '(11) 99999-1111',
@@ -20,6 +33,7 @@ export const INITIAL_PROFILES: UserProfile[] = [
   {
     id: 'ref_1',
     email: 'juiz_marcos@ref.com',
+    password: '123',
     name: 'Marcos Oliveira (Árbitro)',
     role: 'referee',
     phone: '(11) 99999-2222'
@@ -27,6 +41,7 @@ export const INITIAL_PROFILES: UserProfile[] = [
   {
     id: 'ref_2',
     email: 'juiz_roberto@ref.com',
+    password: '123',
     name: 'Roberto Souza (Árbitro)',
     role: 'referee',
     phone: '(11) 99999-2233'
@@ -34,6 +49,7 @@ export const INITIAL_PROFILES: UserProfile[] = [
   {
     id: 'owner_home',
     email: 'dono_flamengo@time.com',
+    password: '123',
     name: 'Ricardo Gomes (Dono do Mengão FC)',
     role: 'team_owner',
     phone: '(11) 99999-3333'
@@ -41,6 +57,7 @@ export const INITIAL_PROFILES: UserProfile[] = [
   {
     id: 'owner_away',
     email: 'dono_palmeiras@time.com',
+    password: '123',
     name: 'Sandro Silva (Dono do Verdão FC)',
     role: 'team_owner',
     phone: '(11) 99999-4444'
@@ -57,7 +74,7 @@ export const INITIAL_TOURNAMENTS: Tournament[] = [
     format: 'points_and_playoffs' as any, // fallback
     has_referees: true,
     status: 'active',
-    creator_id: 'org_1',
+    creator_id: 'org_pedro',
     num_qualifiers: 4,
     logo_url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=120',
     created_at: '2026-01-15'
@@ -71,7 +88,7 @@ export const INITIAL_TOURNAMENTS: Tournament[] = [
     format: 'points_only',
     has_referees: true,
     status: 'active',
-    creator_id: 'org_1',
+    creator_id: 'org_pedro',
     num_qualifiers: 2,
     logo_url: 'https://images.unsplash.com/photo-1518063319789-7217e6706b04?auto=format&fit=crop&q=80&w=120',
     created_at: '2026-02-10'
@@ -85,7 +102,7 @@ export const INITIAL_TOURNAMENTS: Tournament[] = [
     format: 'points_only',
     has_referees: false, // Sem arbitragem contratada para demonstrar o fluxo de criação sem arbitragem
     status: 'completed',
-    creator_id: 'org_1',
+    creator_id: 'org_pedro',
     num_qualifiers: 1,
     logo_url: 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?auto=format&fit=crop&q=80&w=120',
     created_at: '2025-05-01'
