@@ -4,6 +4,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { 
   Tournament, Team, Player, Match, MatchEvent, UserProfile, Invitation, UserRole,
   PLANS_INFO, SINGLE_TOURNAMENT_PAYMENT
@@ -12,6 +13,11 @@ import {
   INITIAL_PROFILES, INITIAL_TOURNAMENTS, INITIAL_TEAMS, 
   INITIAL_PLAYERS, INITIAL_MATCHES, INITIAL_EVENTS, INITIAL_INVITATIONS 
 } from '../data/mockData';
+
+const SUPABASE_URL = 'https://rknyiklwjrhlwjqrarpf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrbnlpa2x3anJobHdqcXJhcnBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0Mzk2MDksImV4cCI6MjA5NjAxNTYwOX0.sQE4WLl7X55Ph24tciZf2WA_ISN0a3jFXcHusDWPknc';
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 interface DatabaseContextType {
   profiles: UserProfile[];
@@ -23,6 +29,12 @@ interface DatabaseContextType {
   invitations: Invitation[];
   currentUser: UserProfile | null;
   supabaseConfig: { url: string; anonKey: string; connected: boolean };
+  isSupabaseSynced: boolean;
+  supabaseError: string | null;
+  syncDataToSupabase: () => Promise<{ success: boolean; message: string }>;
+  pullDataFromSupabase: () => Promise<{ success: boolean; message: string }>;
+  autoSyncEnabled: boolean;
+  setAutoSyncEnabled: (enabled: boolean) => void;
   
   // Actions
   loginWithPassword: (email: string, password?: string) => { success: boolean; message: string };
@@ -69,8 +81,14 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // Hardcoded credentials for showcase
   const [supabaseConfig] = useState({
     url: 'https://rknyiklwjrhlwjqrarpf.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...', // Public key
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJrbnlpa2x3anJobHdqcXJhcnBmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0Mzk2MDksImV4cCI6MjA5NjAxNTYwOX0.sQE4WLl7X55Ph24tciZf2WA_ISN0a3jFXcHusDWPknc', // Real public key
     connected: true
+  });
+
+  const [isSupabaseSynced, setIsSupabaseSynced] = useState<boolean>(false);
+  const [supabaseError, setSupabaseError] = useState<string | null>(null);
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('fc_autosync') === 'true';
   });
 
   // Load from LocalStorage or fallback to Mock Data
@@ -179,6 +197,152 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('fc_current_user', JSON.stringify(u));
   };
 
+  // Setter for auto-sync that also persists in localStorage
+  const handleSetAutoSyncEnabled = (enabled: boolean) => {
+    setAutoSyncEnabled(enabled);
+    localStorage.setItem('fc_autosync', String(enabled));
+  };
+
+  const syncDataToSupabase = async () => {
+    try {
+      setSupabaseError(null);
+      
+      const { error: pErr } = await supabase.from('fc_profiles').upsert(profiles);
+      if (pErr) throw pErr;
+
+      const { error: tErr } = await supabase.from('fc_tournaments').upsert(tournaments);
+      if (tErr) throw tErr;
+
+      const { error: tmErr } = await supabase.from('fc_teams').upsert(teams);
+      if (tmErr) throw tmErr;
+
+      const { error: plErr } = await supabase.from('fc_players').upsert(players);
+      if (plErr) throw plErr;
+
+      const { error: mErr } = await supabase.from('fc_matches').upsert(matches);
+      if (mErr) throw mErr;
+
+      const { error: eErr } = await supabase.from('fc_events').upsert(events);
+      if (eErr) throw eErr;
+
+      const { error: invErr } = await supabase.from('fc_invitations').upsert(invitations);
+      if (invErr) throw invErr;
+
+      setIsSupabaseSynced(true);
+      return { success: true, message: 'Todos os dados locais foram exportados com sucesso para o Supabase!' };
+    } catch (err: any) {
+      console.error('Error syncing to Supabase:', err);
+      let errMsg = err.message || String(err);
+      if (errMsg.includes('relation') && errMsg.includes('does not exist')) {
+        errMsg = 'Tabelas não encontradas no Supabase. Crie as tabelas utilizando o script SQL no menu do Banco de Dados primeiro.';
+      }
+      setSupabaseError(errMsg);
+      setIsSupabaseSynced(false);
+      return { success: false, message: `Erro na exportação: ${errMsg}` };
+    }
+  };
+
+  const pullDataFromSupabase = async () => {
+    try {
+      setSupabaseError(null);
+      
+      const { data: pData, error: pErr } = await supabase.from('fc_profiles').select('*');
+      if (pErr) throw pErr;
+
+      const { data: tData, error: tErr } = await supabase.from('fc_tournaments').select('*');
+      if (tErr) throw tErr;
+
+      const { data: tmData, error: tmErr } = await supabase.from('fc_teams').select('*');
+      if (tmErr) throw tmErr;
+
+      const { data: plData, error: plErr } = await supabase.from('fc_players').select('*');
+      if (plErr) throw plErr;
+
+      const { data: mData, error: mErr } = await supabase.from('fc_matches').select('*');
+      if (mErr) throw mErr;
+
+      const { data: eData, error: eErr } = await supabase.from('fc_events').select('*');
+      if (eErr) throw eErr;
+
+      const { data: invData, error: invErr } = await supabase.from('fc_invitations').select('*');
+      if (invErr) throw invErr;
+
+      if (pData) setProfiles(pData);
+      if (tData) setTournaments(tData || []);
+      if (tmData) setTeams(tmData || []);
+      if (plData) setPlayers(plData || []);
+      if (mData) setMatches(mData || []);
+      if (eData) setEvents(eData || []);
+      if (invData) setInvitations(invData || []);
+
+      let finalProfiles = pData || [];
+      const hasPedro = finalProfiles.some(p => p.email.toLowerCase() === 'pedro@auroratech.com');
+      if (!hasPedro) {
+        const pedroProfile: UserProfile = {
+          id: 'org_pedro',
+          email: 'pedro@auroratech.com',
+          password: 'Admin1234',
+          name: 'Pedro (Aurora Tech)',
+          role: 'organizer',
+          phone: '(11) 99283-5438',
+          subscriptionStatus: 'active',
+          subscriptionPlan: 'plan_3000',
+          subscriptionExpiresAt: '2027-12-31',
+          tournamentsPaidCount: 0
+        };
+        finalProfiles = [pedroProfile, ...finalProfiles];
+        setProfiles(finalProfiles);
+      }
+
+      const loadedUser = localStorage.getItem('fc_current_user');
+      const parsedUser = loadedUser ? JSON.parse(loadedUser) : null;
+      let activeUser = currentUser;
+      if (parsedUser) {
+        activeUser = finalProfiles.find(p => p.email.toLowerCase() === parsedUser.email.toLowerCase()) || parsedUser;
+        setCurrentUser(activeUser);
+      } else {
+        const pedro = finalProfiles.find(p => p.email.toLowerCase() === 'pedro@auroratech.com');
+        if (pedro) {
+          activeUser = pedro;
+          setCurrentUser(pedro);
+        }
+      }
+
+      saveToLocal(
+        finalProfiles,
+        tData || [],
+        tmData || [],
+        plData || [],
+        mData || [],
+        eData || [],
+        invData || [],
+        activeUser
+      );
+
+      setIsSupabaseSynced(true);
+      return { success: true, message: 'Dados importados com sucesso do Supabase para o GestorFC!' };
+    } catch (err: any) {
+      console.error('Error pulling from Supabase:', err);
+      let errMsg = err.message || String(err);
+      if (errMsg.includes('relation') && errMsg.includes('does not exist')) {
+        errMsg = 'Tabelas não encontradas no Supabase. Crie as tabelas utilizando o script SQL no menu do Banco de Dados primeiro.';
+      }
+      setSupabaseError(errMsg);
+      return { success: false, message: `Erro na importação: ${errMsg}` };
+    }
+  };
+
+  // Run initial pull if Auto-Sync is enabled
+  useEffect(() => {
+    if (autoSyncEnabled) {
+      pullDataFromSupabase().then(res => {
+        if (!res.success) {
+          console.log('AutoSync pull on load failed:', res.message);
+        }
+      });
+    }
+  }, []);
+
   // Helper to trigger save with current state values
   const persist = (
     updatedProfiles = profiles,
@@ -191,6 +355,25 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     updatedUser = currentUser
   ) => {
     saveToLocal(updatedProfiles, updatedTournaments, updatedTeams, updatedPlayers, updatedMatches, updatedEvents, updatedInvitations, updatedUser);
+
+    if (autoSyncEnabled) {
+      // Background sync to Supabase without blocking UI
+      Promise.all([
+        supabase.from('fc_profiles').upsert(updatedProfiles),
+        supabase.from('fc_tournaments').upsert(updatedTournaments),
+        supabase.from('fc_teams').upsert(updatedTeams),
+        supabase.from('fc_players').upsert(updatedPlayers),
+        supabase.from('fc_matches').upsert(updatedMatches),
+        supabase.from('fc_events').upsert(updatedEvents),
+        supabase.from('fc_invitations').upsert(updatedInvitations),
+      ]).then(() => {
+        setIsSupabaseSynced(true);
+        setSupabaseError(null);
+      }).catch(err => {
+        console.warn('AutoSync background upsert failed:', err);
+        setIsSupabaseSynced(false);
+      });
+    }
   };
 
   // Professional Email & Password Auth System
@@ -658,6 +841,12 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       invitations,
       currentUser,
       supabaseConfig,
+      isSupabaseSynced,
+      supabaseError,
+      syncDataToSupabase,
+      pullDataFromSupabase,
+      autoSyncEnabled,
+      setAutoSyncEnabled: handleSetAutoSyncEnabled,
       loginWithPassword,
       registerUser,
       logout,

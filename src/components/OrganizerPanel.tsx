@@ -10,17 +10,19 @@ import { Tournament, Team, Match, Invitation, PLANS_INFO } from '../types';
 import { 
   Trophy, Plus, Mail, Users, FileText, Star, 
   CreditCard, Check, AlertTriangle, ShieldCheck, RefreshCw,
-  Download, Send, Smartphone
+  Download, Send, Smartphone, Database
 } from 'lucide-react';
 
 export const OrganizerPanel: React.FC = () => {
   const { 
     currentUser, tournaments, teams, matches, events, invitations, players,
     createTournament, sendInvitation, organizerApproveMatch, rateReferee,
-    subscribeSaaS, profiles, resetDatabase
+    subscribeSaaS, profiles, resetDatabase,
+    isSupabaseSynced, supabaseError, syncDataToSupabase, pullDataFromSupabase,
+    autoSyncEnabled, setAutoSyncEnabled
   } = useDatabase();
 
-  const [activeTab, setActiveTab] = useState<'my_tournaments' | 'create_tournament' | 'invitations' | 'approvals' | 'saas' | 'export' | 'whatsapp'>('my_tournaments');
+  const [activeTab, setActiveTab] = useState<'my_tournaments' | 'create_tournament' | 'invitations' | 'approvals' | 'saas' | 'export' | 'whatsapp' | 'database'>('my_tournaments');
 
   // Premium Features States
   const [exportType, setExportType] = useState<'json' | 'csv'>('json');
@@ -29,14 +31,23 @@ export const OrganizerPanel: React.FC = () => {
   const [whatsappSending, setWhatsappSending] = useState(false);
   const [whatsappSentList, setWhatsappSentList] = useState<{ id: string; time: string; text: string; status: 'delivered' | 'failed' }[]>([]);
 
+  // Supabase states
+  const [syncingToSupabase, setSyncingToSupabase] = useState(false);
+  const [pullingFromSupabase, setPullingFromSupabase] = useState(false);
+  const [dbMessage, setDbMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [copiedSql, setCopiedSql] = useState(false);
+
   // Form States - Create Tournament
   const [name, setName] = useState('');
   const [sportName, setSportName] = useState('Futebol de Campo');
-  const [category, setCategory] = useState('Adulto Livre');
-  const [year, setYear] = useState(2026);
+  const [category, setCategory] = useState('Sub-15');
+  const [year, setYear] = useState(new Date().getFullYear());
   const [format, setFormat] = useState<'points_only' | 'groups_and_playoffs'>('points_only');
   const [hasReferees, setHasReferees] = useState(true);
   const [numQualifiers, setNumQualifiers] = useState(4);
+  const [numGroups, setNumGroups] = useState(2);
+  const [teamsPerGroup, setTeamsPerGroup] = useState(4);
+  const [advancementPerGroup, setAdvancementPerGroup] = useState(2);
   const [successMsg, setSuccessMsg] = useState('');
 
   // Form States - Invitations
@@ -75,6 +86,11 @@ export const OrganizerPanel: React.FC = () => {
     e.preventDefault();
     if (!name.trim()) return;
 
+    if (Number(year) < new Date().getFullYear()) {
+      alert(`Erro: O ano da edição (${year}) não pode ser retroativo ao ano atual (${new Date().getFullYear()}).`);
+      return;
+    }
+
     createTournament({
       name,
       sport_name: sportName,
@@ -82,7 +98,10 @@ export const OrganizerPanel: React.FC = () => {
       year: Number(year),
       format,
       has_referees: hasReferees,
-      num_qualifiers: Number(numQualifiers)
+      num_qualifiers: Number(numQualifiers),
+      num_groups: format === 'groups_and_playoffs' ? Number(numGroups) : undefined,
+      teams_per_group: format === 'groups_and_playoffs' ? Number(teamsPerGroup) : undefined,
+      advancement_per_group: format === 'groups_and_playoffs' ? Number(advancementPerGroup) : undefined
     });
 
     setSuccessMsg(`Campeonato "${name}" criado com sucesso! O primeiro campeonato é grátis.`);
@@ -233,6 +252,17 @@ export const OrganizerPanel: React.FC = () => {
           WhatsApp Alertas
           <span className="text-[9px] bg-[#00D1FF]/15 text-[#00D1FF] px-1 py-0.5 rounded font-black">R$3000</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('database')}
+          className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+            activeTab === 'database' ? 'bg-[#16191F] text-[#00FF87] shadow-sm' : 'text-[#8E9299] hover:text-white'
+          }`}
+        >
+          <Database className="w-4 h-4 text-[#00FF87]" />
+          Banco Supabase
+          <span className="text-[9px] bg-[#00FF87]/15 text-[#00FF87] px-1 py-0.5 rounded font-black">Real-Time</span>
+        </button>
       </div>
 
       {/* TAB CONTENT: MY TOURNAMENTS */}
@@ -366,6 +396,9 @@ export const OrganizerPanel: React.FC = () => {
                   <option value="Futebol de Campo">⚽️ Futebol de Campo</option>
                   <option value="Futsal">⚽️ Futsal</option>
                   <option value="Futebol Society">⚽️ Futebol Society</option>
+                  <option value="Basquete">🏀 Basquete</option>
+                  <option value="Vôlei">🏐 Vôlei</option>
+                  <option value="Handball">🤾‍♂️ Handball</option>
                 </select>
               </div>
 
@@ -376,10 +409,16 @@ export const OrganizerPanel: React.FC = () => {
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
                 >
-                  <option value="Adulto Livre">Adulto Livre</option>
-                  <option value="Sub-17">Sub-17 (Idade limite)</option>
+                  <option value="Sub-9">Sub-9 (Idade limite)</option>
+                  <option value="Sub-11">Sub-11 (Idade limite)</option>
+                  <option value="Sub-13">Sub-13 (Idade limite)</option>
                   <option value="Sub-15">Sub-15 (Idade limite)</option>
-                  <option value="Master 40+">Master 40+</option>
+                  <option value="Sub-17">Sub-17 (Idade limite)</option>
+                  <option value="Sub-20">Sub-20 (Idade limite)</option>
+                  <option value="Sport (18+ apenas)">Sport (18+ apenas)</option>
+                  <option value="35+">35+ (Master)</option>
+                  <option value="45+">45+ (Master)</option>
+                  <option value="50+">50+ (Super Master)</option>
                 </select>
               </div>
 
@@ -389,24 +428,80 @@ export const OrganizerPanel: React.FC = () => {
                   type="number"
                   value={year}
                   onChange={(e) => setYear(Number(e.target.value))}
+                  min={new Date().getFullYear()}
                   className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Passam de fase (Playoffs)</label>
-                <input
-                  type="number"
-                  value={numQualifiers}
-                  onChange={(e) => setNumQualifiers(Number(e.target.value))}
-                  min={1}
-                  max={16}
-                  placeholder="Ex: 4 times avançam"
+                <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Formato do Torneio</label>
+                <select
+                  value={format}
+                  onChange={(e) => setFormat(e.target.value as 'points_only' | 'groups_and_playoffs')}
                   className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
-                  required
-                />
+                >
+                  <option value="points_only">🏆 Pontos Corridos</option>
+                  <option value="groups_and_playoffs">🌍 Grupos + Eliminatórias (Copa do Mundo)</option>
+                </select>
               </div>
+
+              {format === 'points_only' ? (
+                <div>
+                  <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Times que sobem/avançam</label>
+                  <input
+                    type="number"
+                    value={numQualifiers}
+                    onChange={(e) => setNumQualifiers(Number(e.target.value))}
+                    min={1}
+                    max={16}
+                    placeholder="Ex: 4 times avançam"
+                    className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
+                    required
+                  />
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Quantidade de Grupos</label>
+                    <select
+                      value={numGroups}
+                      onChange={(e) => setNumGroups(Number(e.target.value))}
+                      className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
+                    >
+                      <option value={2}>2 Grupos</option>
+                      <option value={4}>4 Grupos</option>
+                      <option value={8}>8 Grupos (Estilo Copa)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Times por Grupo</label>
+                    <select
+                      value={teamsPerGroup}
+                      onChange={(e) => setTeamsPerGroup(Number(e.target.value))}
+                      className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
+                    >
+                      <option value={3}>3 Times</option>
+                      <option value={4}>4 Times (Copa do Mundo)</option>
+                      <option value={6}>6 Times</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-[#8E9299] uppercase mb-1">Classificados por Grupo</label>
+                    <select
+                      value={advancementPerGroup}
+                      onChange={(e) => setAdvancementPerGroup(Number(e.target.value))}
+                      className="w-full bg-[#16191F] border border-[#2D3139] rounded-xl px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-[#00FF87]/50"
+                    >
+                      <option value={1}>1 avança</option>
+                      <option value={2}>2 avançam (Copa do Mundo)</option>
+                      <option value={3}>3 avançam</option>
+                    </select>
+                  </div>
+                </>
+              )}
 
               <div className="sm:col-span-2 py-2">
                 <div className="flex items-center justify-between bg-[#16191F] border border-[#2D3139] p-3 rounded-xl">
@@ -1198,6 +1293,295 @@ export const OrganizerPanel: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'database' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="bg-[#1A1D23] border border-[#2D3139] p-6 rounded-2xl">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#2D3139] pb-4 mb-6">
+              <div>
+                <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                  <Database className="w-5 h-5 text-[#00FF87]" />
+                  Banco de Dados Supabase (GestorFC Link)
+                </h3>
+                <p className="text-xs text-[#8E9299] mt-1">
+                  Gerencie a conexão e sincronização entre a memória local do seu navegador e o seu banco de dados oficial no Supabase.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 bg-[#16191F] border border-[#2D3139] px-3 py-1.5 rounded-xl">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#00FF87] animate-pulse"></span>
+                <span className="text-xs font-bold text-[#E4E7EB] uppercase tracking-wider font-mono">Conexão Ativa</span>
+              </div>
+            </div>
+
+            {/* Config & Toggles */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className="bg-[#16191F] border border-[#2D3139] p-4 rounded-xl space-y-3">
+                <h4 className="text-xs font-bold text-[#8E9299] uppercase tracking-wider">Endereço do Servidor</h4>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-[#8E9299] block font-mono">SUPABASE_URL:</span>
+                  <code className="text-xs font-mono text-[#00D1FF] bg-[#0F1115] px-2 py-1 rounded block truncate">
+                    https://rknyiklwjrhlwjqrarpf.supabase.co
+                  </code>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-[#8E9299] block font-mono">SUPABASE_ANON_KEY:</span>
+                  <code className="text-xs font-mono text-[#8E9299] bg-[#0F1115] px-2 py-1 rounded block truncate">
+                    eyJhbGciOiJIUzI1NiIsIn...
+                  </code>
+                </div>
+              </div>
+
+              <div className="bg-[#16191F] border border-[#2D3139] p-4 rounded-xl flex flex-col justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-[#8E9299] uppercase tracking-wider mb-2">Sincronização Automática</h4>
+                  <p className="text-xs text-[#8E9299] leading-relaxed">
+                    Quando ativa, qualquer criação de campeonato, cadastro de time/jogador ou súmula de partida será salva no Supabase em segundo plano.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center justify-between bg-[#0F1115] border border-[#2D3139] p-2.5 rounded-xl">
+                  <span className="text-xs text-white font-medium">Sincronizar em Tempo Real?</span>
+                  <input
+                    type="checkbox"
+                    checked={autoSyncEnabled}
+                    onChange={(e) => setAutoSyncEnabled(e.target.checked)}
+                    className="w-5 h-5 accent-[#00FF87] cursor-pointer"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-[#16191F] border border-[#2D3139] p-4 rounded-xl flex flex-col justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-[#8E9299] uppercase tracking-wider mb-1">Status de Sincronia</h4>
+                  <p className="text-xs text-[#8E9299] leading-relaxed">
+                    Sincronize manualmente para consolidar ou fazer backup dos seus dados de teste e campeonatos ativos.
+                  </p>
+                </div>
+                <div className="mt-4 flex items-center gap-2">
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                    isSupabaseSynced 
+                      ? 'bg-[#00FF87]/15 text-[#00FF87] border border-[#00FF87]/25' 
+                      : 'bg-[#ff9d00]/15 text-[#ff9d00] border border-[#ff9d00]/25'
+                  }`}>
+                    {isSupabaseSynced ? '✓ Totalmente Sincronizado' : '⚠️ Sincronização Pendente'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Error/Success alerts */}
+            {dbMessage && (
+              <div className={`p-4 rounded-xl border mb-6 text-xs flex items-start gap-2.5 ${
+                dbMessage.type === 'success' 
+                  ? 'bg-[#00FF87]/10 border-[#00FF87]/30 text-[#00FF87]' 
+                  : 'bg-red-500/10 border-red-500/30 text-red-400'
+              }`}>
+                {dbMessage.type === 'success' ? (
+                  <Check className="w-4 h-4 shrink-0 text-[#00FF87] mt-0.5" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
+                )}
+                <div className="space-y-1">
+                  <p className="font-semibold">{dbMessage.type === 'success' ? 'Sucesso!' : 'Ocorreu um problema'}</p>
+                  <p className="opacity-90 leading-relaxed">{dbMessage.text}</p>
+                </div>
+              </div>
+            )}
+
+            {supabaseError && (
+              <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-xs flex items-start gap-2.5 mb-6">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold">Erro de Comunicação do Banco</p>
+                  <p className="opacity-90 leading-relaxed">{supabaseError}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Manual Sync Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={async () => {
+                  setSyncingToSupabase(true);
+                  setDbMessage(null);
+                  const result = await syncDataToSupabase();
+                  setSyncingToSupabase(false);
+                  setDbMessage({ type: result.success ? 'success' : 'error', text: result.message });
+                }}
+                disabled={syncingToSupabase || pullingFromSupabase}
+                className="bg-[#00FF87] text-[#0F1115] hover:bg-[#00E076] disabled:opacity-50 py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all uppercase tracking-wider"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncingToSupabase ? 'animate-spin' : ''}`} />
+                {syncingToSupabase ? 'Exportando...' : 'Exportar Dados Locais para o Supabase (Upload)'}
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (confirm('Atenção: Isso substituirá todos os seus dados locais (campeonatos, times, jogadores e sumulas salvos no navegador) pelos dados que estão no Supabase agora. Deseja prosseguir?')) {
+                    setPullingFromSupabase(true);
+                    setDbMessage(null);
+                    const result = await pullDataFromSupabase();
+                    setPullingFromSupabase(false);
+                    setDbMessage({ type: result.success ? 'success' : 'error', text: result.message });
+                  }
+                }}
+                disabled={syncingToSupabase || pullingFromSupabase}
+                className="bg-[#16191F] border border-[#2D3139] text-white hover:bg-[#1C2029] disabled:opacity-50 py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all uppercase tracking-wider"
+              >
+                <Download className={`w-4 h-4 ${pullingFromSupabase ? 'animate-spin' : ''}`} />
+                {pullingFromSupabase ? 'Importando...' : 'Importar Dados do Supabase para Local (Download)'}
+              </button>
+            </div>
+          </div>
+
+          {/* SQL Setup Instructions */}
+          <div className="bg-[#1A1D23] border border-[#2D3139] p-6 rounded-2xl">
+            <div className="flex items-center justify-between border-b border-[#2D3139] pb-4 mb-4">
+              <div>
+                <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#00FF87]" />
+                  Script de Configuração SQL (Supabase Query Editor)
+                </h4>
+                <p className="text-[11px] text-[#8E9299] mt-0.5">
+                  Copie e execute este script no console de queries do seu painel Supabase para criar todas as tabelas necessárias instantaneamente!
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const sqlText = document.getElementById('supabase-setup-sql')?.textContent || '';
+                  navigator.clipboard.writeText(sqlText);
+                  setCopiedSql(true);
+                  setTimeout(() => setCopiedSql(false), 2000);
+                }}
+                className="bg-[#16191F] border border-[#2D3139] hover:bg-[#1C2029] text-xs font-semibold px-3 py-1.5 rounded-lg text-white flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
+              >
+                {copiedSql ? 'Copiado! ✓' : 'Copiar SQL'}
+              </button>
+            </div>
+
+            <pre className="p-4 bg-[#0F1115] border border-[#2D3139] rounded-xl text-[10px] sm:text-xs font-mono text-[#E4E7EB] overflow-x-auto max-h-[350px] leading-relaxed">
+              <code id="supabase-setup-sql">
+{`-- 1. Tabela de Perfis de Usuários (Donos de Torneios, Árbitros, Donos de Times)
+CREATE TABLE IF NOT EXISTS fc_profiles (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL,
+  phone TEXT,
+  "subscriptionStatus" TEXT,
+  "subscriptionPlan" TEXT,
+  "subscriptionExpiresAt" TEXT,
+  "tournamentsPaidCount" INTEGER DEFAULT 0
+);
+
+-- 2. Tabela de Campeonatos / Torneios
+CREATE TABLE IF NOT EXISTS fc_tournaments (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  sport_name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  format TEXT NOT NULL,
+  has_referees BOOLEAN NOT NULL DEFAULT true,
+  status TEXT NOT NULL DEFAULT 'active',
+  creator_id TEXT REFERENCES fc_profiles(id) ON DELETE CASCADE,
+  num_qualifiers INTEGER NOT NULL,
+  logo_url TEXT,
+  created_at TEXT NOT NULL,
+  num_groups INTEGER,
+  teams_per_group INTEGER,
+  advancement_per_group INTEGER
+);
+
+-- 3. Tabela de Times Participantes
+CREATE TABLE IF NOT EXISTS fc_teams (
+  id TEXT PRIMARY KEY,
+  tournament_id TEXT REFERENCES fc_tournaments(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  logo_url TEXT NOT NULL,
+  owner_id TEXT REFERENCES fc_profiles(id) ON DELETE CASCADE,
+  category TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  group_name TEXT
+);
+
+-- 4. Tabela de Jogadores Atletas
+CREATE TABLE IF NOT EXISTS fc_players (
+  id TEXT PRIMARY KEY,
+  team_id TEXT REFERENCES fc_teams(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  cpf TEXT NOT NULL,
+  birth_date TEXT NOT NULL,
+  photo_url TEXT,
+  validation_status TEXT NOT NULL DEFAULT 'pending',
+  validation_notes TEXT
+);
+
+-- 5. Tabela de Partidas da Tabela de Jogos
+CREATE TABLE IF NOT EXISTS fc_matches (
+  id TEXT PRIMARY KEY,
+  tournament_id TEXT REFERENCES fc_tournaments(id) ON DELETE CASCADE,
+  home_team_id TEXT REFERENCES fc_teams(id) ON DELETE CASCADE,
+  away_team_id TEXT REFERENCES fc_teams(id) ON DELETE CASCADE,
+  round INTEGER NOT NULL,
+  date TEXT NOT NULL,
+  time TEXT NOT NULL,
+  location TEXT NOT NULL,
+  referee_id TEXT,
+  assistant_1_id TEXT,
+  assistant_2_id TEXT,
+  fourth_referee_id TEXT,
+  score_home INTEGER,
+  score_away INTEGER,
+  status TEXT NOT NULL DEFAULT 'scheduled',
+  sumula_written BOOLEAN NOT NULL DEFAULT false,
+  home_approved BOOLEAN NOT NULL DEFAULT false,
+  away_approved BOOLEAN NOT NULL DEFAULT false,
+  organizer_approved BOOLEAN NOT NULL DEFAULT false,
+  referee_rating_by_organizer INTEGER,
+  referee_rating_by_home INTEGER,
+  referee_rating_by_away INTEGER,
+  field_rating_by_home INTEGER,
+  field_rating_by_away INTEGER
+);
+
+-- 6. Tabela de Eventos de Partida (Gols, Cartões)
+CREATE TABLE IF NOT EXISTS fc_events (
+  id TEXT PRIMARY KEY,
+  match_id TEXT REFERENCES fc_matches(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  player_id TEXT NOT NULL,
+  team_id TEXT REFERENCES fc_teams(id) ON DELETE CASCADE,
+  minute INTEGER NOT NULL
+);
+
+-- 7. Tabela de Convites Enviados
+CREATE TABLE IF NOT EXISTS fc_invitations (
+  id TEXT PRIMARY KEY,
+  tournament_id TEXT REFERENCES fc_tournaments(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL,
+  team_name TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL
+);
+
+-- Habilitar acesso público direto para testes reais
+ALTER TABLE fc_profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fc_tournaments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fc_teams DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fc_players DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fc_matches DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fc_events DISABLE ROW LEVEL SECURITY;
+ALTER TABLE fc_invitations DISABLE ROW LEVEL SECURITY;`}
+              </code>
+            </pre>
+          </div>
         </div>
       )}
 

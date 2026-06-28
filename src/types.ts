@@ -32,6 +32,9 @@ export interface Tournament {
   num_qualifiers: number; // e.g., 4 qualify for semi-finals
   logo_url?: string;
   created_at: string;
+  num_groups?: number;          // e.g. 4 groups
+  teams_per_group?: number;     // e.g. 4 teams
+  advancement_per_group?: number; // e.g. 2 advance from each group
 }
 
 export interface Team {
@@ -42,6 +45,7 @@ export interface Team {
   owner_id: string;
   category: string;
   status: 'pending' | 'accepted';
+  group_name?: string; // e.g. 'Grupo A', 'Grupo B' for World Cup format
 }
 
 export interface Player {
