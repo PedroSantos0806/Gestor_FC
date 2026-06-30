@@ -10,7 +10,7 @@ import { Tournament, Team, Match, Invitation, PLANS_INFO } from '../types';
 import { 
   Trophy, Plus, Mail, Users, FileText, Star, 
   CreditCard, Check, AlertTriangle, ShieldCheck, RefreshCw,
-  Download, Send, Smartphone, Database
+  Download, Send, Smartphone, Database, Shield
 } from 'lucide-react';
 
 export const OrganizerPanel: React.FC = () => {
@@ -91,25 +91,29 @@ export const OrganizerPanel: React.FC = () => {
       return;
     }
 
-    createTournament({
-      name,
-      sport_name: sportName,
-      category,
-      year: Number(year),
-      format,
-      has_referees: hasReferees,
-      num_qualifiers: Number(numQualifiers),
-      num_groups: format === 'groups_and_playoffs' ? Number(numGroups) : undefined,
-      teams_per_group: format === 'groups_and_playoffs' ? Number(teamsPerGroup) : undefined,
-      advancement_per_group: format === 'groups_and_playoffs' ? Number(advancementPerGroup) : undefined
-    });
+    try {
+      createTournament({
+        name,
+        sport_name: sportName,
+        category,
+        year: Number(year),
+        format,
+        has_referees: hasReferees,
+        num_qualifiers: Number(numQualifiers),
+        num_groups: format === 'groups_and_playoffs' ? Number(numGroups) : undefined,
+        teams_per_group: format === 'groups_and_playoffs' ? Number(teamsPerGroup) : undefined,
+        advancement_per_group: format === 'groups_and_playoffs' ? Number(advancementPerGroup) : undefined
+      });
 
-    setSuccessMsg(`Campeonato "${name}" criado com sucesso! O primeiro campeonato é grátis.`);
-    setName('');
-    setTimeout(() => {
-      setSuccessMsg('');
-      setActiveTab('my_tournaments');
-    }, 2000);
+      setSuccessMsg(`Campeonato "${name}" criado com sucesso! O primeiro campeonato é grátis.`);
+      setName('');
+      setTimeout(() => {
+        setSuccessMsg('');
+        setActiveTab('my_tournaments');
+      }, 2000);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao criar campeonato.');
+    }
   };
 
   // Helper function to handle invite submission
@@ -117,19 +121,23 @@ export const OrganizerPanel: React.FC = () => {
     e.preventDefault();
     if (!inviteEmail.trim() || !selectedTourIdForInvite) return;
 
-    sendInvitation({
-      tournament_id: selectedTourIdForInvite,
-      email: inviteEmail.trim(),
-      role: inviteRole,
-      team_name: inviteRole === 'team_owner' ? inviteTeamName.trim() : undefined
-    });
+    try {
+      sendInvitation({
+        tournament_id: selectedTourIdForInvite,
+        email: inviteEmail.trim(),
+        role: inviteRole,
+        team_name: inviteRole === 'team_owner' ? inviteTeamName.trim() : undefined
+      });
 
-    setInviteSuccess('Convite enviado com sucesso! O destinatário já poderá simular o login e aceitar.');
-    setInviteEmail('');
-    setInviteTeamName('');
-    setTimeout(() => {
-      setInviteSuccess('');
-    }, 3000);
+      setInviteSuccess('Convite enviado com sucesso! O destinatário já poderá simular o login e aceitar.');
+      setInviteEmail('');
+      setInviteTeamName('');
+      setTimeout(() => {
+        setInviteSuccess('');
+      }, 3000);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao enviar convite.');
+    }
   };
 
   // Helper to resolve Team Details
@@ -253,16 +261,18 @@ export const OrganizerPanel: React.FC = () => {
           <span className="text-[9px] bg-[#00D1FF]/15 text-[#00D1FF] px-1 py-0.5 rounded font-black">R$3000</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('database')}
-          className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
-            activeTab === 'database' ? 'bg-[#16191F] text-[#00FF87] shadow-sm' : 'text-[#8E9299] hover:text-white'
-          }`}
-        >
-          <Database className="w-4 h-4 text-[#00FF87]" />
-          Banco Supabase
-          <span className="text-[9px] bg-[#00FF87]/15 text-[#00FF87] px-1 py-0.5 rounded font-black">Real-Time</span>
-        </button>
+        {currentUser?.email?.toLowerCase() === 'pedro@auroratech.com' && (
+          <button
+            onClick={() => setActiveTab('admin_panel')}
+            className={`px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'admin_panel' ? 'bg-[#16191F] text-[#00FF87] shadow-sm border border-[#00FF87]/20' : 'text-[#8E9299] hover:text-white'
+            }`}
+          >
+            <Shield className="w-4 h-4 text-[#00FF87]" />
+            Painel Admin GFC
+            <span className="text-[9px] bg-[#00FF87]/15 text-[#00FF87] px-1 py-0.5 rounded font-black">MASTER</span>
+          </button>
+        )}
       </div>
 
       {/* TAB CONTENT: MY TOURNAMENTS */}
@@ -1296,291 +1306,160 @@ export const OrganizerPanel: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'database' && (
-        <div className="space-y-6 animate-fade-in">
+      {activeTab === 'admin_panel' && currentUser?.email?.toLowerCase() === 'pedro@auroratech.com' && (
+        <div className="space-y-6 animate-fade-in text-xs sm:text-sm">
           <div className="bg-[#1A1D23] border border-[#2D3139] p-6 rounded-2xl">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#2D3139] pb-4 mb-6">
               <div>
                 <h3 className="font-bold text-white text-lg flex items-center gap-2">
-                  <Database className="w-5 h-5 text-[#00FF87]" />
-                  Banco de Dados Supabase (GestorFC Link)
+                  <Shield className="w-5 h-5 text-[#00FF87]" />
+                  Painel de Controle do Criador (GestorFC Admin)
                 </h3>
                 <p className="text-xs text-[#8E9299] mt-1">
-                  Gerencie a conexão e sincronização entre a memória local do seu navegador e o seu banco de dados oficial no Supabase.
+                  Gerencie o engajamento e a retenção de todos os usuários cadastrados e seus respectivos campeonatos.
                 </p>
               </div>
-              <div className="flex items-center gap-2 bg-[#16191F] border border-[#2D3139] px-3 py-1.5 rounded-xl">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#00FF87] animate-pulse"></span>
-                <span className="text-xs font-bold text-[#E4E7EB] uppercase tracking-wider font-mono">Conexão Ativa</span>
-              </div>
-            </div>
-
-            {/* Config & Toggles */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-              <div className="bg-[#16191F] border border-[#2D3139] p-4 rounded-xl space-y-3">
-                <h4 className="text-xs font-bold text-[#8E9299] uppercase tracking-wider">Endereço do Servidor</h4>
-                <div className="space-y-1">
-                  <span className="text-[10px] text-[#8E9299] block font-mono">SUPABASE_URL:</span>
-                  <code className="text-xs font-mono text-[#00D1FF] bg-[#0F1115] px-2 py-1 rounded block truncate">
-                    https://rknyiklwjrhlwjqrarpf.supabase.co
-                  </code>
+              <div className="flex gap-4 shrink-0">
+                <div className="bg-[#16191F] border border-[#2D3139] px-4 py-2 rounded-xl text-center min-w-[100px]">
+                  <span className="text-[10px] text-[#8E9299] block font-mono uppercase tracking-wider">Usuários</span>
+                  <span className="text-lg font-black text-[#00FF87]">{profiles.length}</span>
                 </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] text-[#8E9299] block font-mono">SUPABASE_ANON_KEY:</span>
-                  <code className="text-xs font-mono text-[#8E9299] bg-[#0F1115] px-2 py-1 rounded block truncate">
-                    eyJhbGciOiJIUzI1NiIsIn...
-                  </code>
-                </div>
-              </div>
-
-              <div className="bg-[#16191F] border border-[#2D3139] p-4 rounded-xl flex flex-col justify-between">
-                <div>
-                  <h4 className="text-xs font-bold text-[#8E9299] uppercase tracking-wider mb-2">Sincronização Automática</h4>
-                  <p className="text-xs text-[#8E9299] leading-relaxed">
-                    Quando ativa, qualquer criação de campeonato, cadastro de time/jogador ou súmula de partida será salva no Supabase em segundo plano.
-                  </p>
-                </div>
-                <div className="mt-4 flex items-center justify-between bg-[#0F1115] border border-[#2D3139] p-2.5 rounded-xl">
-                  <span className="text-xs text-white font-medium">Sincronizar em Tempo Real?</span>
-                  <input
-                    type="checkbox"
-                    checked={autoSyncEnabled}
-                    onChange={(e) => setAutoSyncEnabled(e.target.checked)}
-                    className="w-5 h-5 accent-[#00FF87] cursor-pointer"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-[#16191F] border border-[#2D3139] p-4 rounded-xl flex flex-col justify-between">
-                <div>
-                  <h4 className="text-xs font-bold text-[#8E9299] uppercase tracking-wider mb-1">Status de Sincronia</h4>
-                  <p className="text-xs text-[#8E9299] leading-relaxed">
-                    Sincronize manualmente para consolidar ou fazer backup dos seus dados de teste e campeonatos ativos.
-                  </p>
-                </div>
-                <div className="mt-4 flex items-center gap-2">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                    isSupabaseSynced 
-                      ? 'bg-[#00FF87]/15 text-[#00FF87] border border-[#00FF87]/25' 
-                      : 'bg-[#ff9d00]/15 text-[#ff9d00] border border-[#ff9d00]/25'
-                  }`}>
-                    {isSupabaseSynced ? '✓ Totalmente Sincronizado' : '⚠️ Sincronização Pendente'}
-                  </span>
+                <div className="bg-[#16191F] border border-[#2D3139] px-4 py-2 rounded-xl text-center min-w-[100px]">
+                  <span className="text-[10px] text-[#8E9299] block font-mono uppercase tracking-wider">Campeonatos</span>
+                  <span className="text-lg font-black text-[#00D1FF]">{tournaments.length}</span>
                 </div>
               </div>
             </div>
 
-            {/* Error/Success alerts */}
-            {dbMessage && (
-              <div className={`p-4 rounded-xl border mb-6 text-xs flex items-start gap-2.5 ${
-                dbMessage.type === 'success' 
-                  ? 'bg-[#00FF87]/10 border-[#00FF87]/30 text-[#00FF87]' 
-                  : 'bg-red-500/10 border-red-500/30 text-red-400'
-              }`}>
-                {dbMessage.type === 'success' ? (
-                  <Check className="w-4 h-4 shrink-0 text-[#00FF87] mt-0.5" />
-                ) : (
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
-                )}
-                <div className="space-y-1">
-                  <p className="font-semibold">{dbMessage.type === 'success' ? 'Sucesso!' : 'Ocorreu um problema'}</p>
-                  <p className="opacity-90 leading-relaxed">{dbMessage.text}</p>
-                </div>
+            {/* List of Users with Details */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-2 flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#00FF87]" />
+                Relatório de Clientes & Retenção de Uso
+              </h4>
+              
+              <div className="overflow-x-auto rounded-xl border border-[#2D3139]">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-[#16191F] border-b border-[#2D3139] text-[#8E9299] uppercase text-[10px] tracking-wider font-semibold">
+                      <th className="py-3 px-4">Nome / Cadastro</th>
+                      <th className="py-3 px-4">Função / Contato</th>
+                      <th className="py-3 px-4">Plano Atual</th>
+                      <th className="py-3 px-4 text-center">Torneios</th>
+                      <th className="py-3 px-4">Retenção de Uso</th>
+                      <th className="py-3 px-4 text-right">Ação Direta</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2D3139]/40 bg-[#1A1D23]">
+                    {profiles.map(p => {
+                      const userTourneys = tournaments.filter(t => t.creator_id === p.id);
+                      const count = userTourneys.length;
+                      let retentionText = '';
+                      let retentionBadgeClass = '';
+                      
+                      if (count === 0) {
+                        retentionText = 'Apenas Cadastro (Sem campeonato)';
+                        retentionBadgeClass = 'bg-[#8E9299]/10 text-[#8E9299] border-[#8E9299]/20';
+                      } else if (count === 1) {
+                        retentionText = 'Usou Apenas 1 Vez (Churn Risco)';
+                        retentionBadgeClass = 'bg-[#ff9d00]/10 text-[#ff9d00] border-[#ff9d00]/30';
+                      } else {
+                        retentionText = `Uso Frequente (${count} campeonatos)`;
+                        retentionBadgeClass = 'bg-[#00FF87]/10 text-[#00FF87] border-[#00FF87]/30';
+                      }
+
+                      return (
+                        <React.Fragment key={p.id}>
+                          <tr className="hover:bg-[#16191F]/40 transition-colors">
+                            <td className="py-3.5 px-4 font-sans">
+                              <p className="font-bold text-white text-sm">{p.name}</p>
+                              <p className="text-[11px] text-[#8E9299] font-mono leading-none mt-1">{p.email}</p>
+                            </td>
+                            <td className="py-3.5 px-4 space-y-1">
+                              <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider bg-[#00D1FF]/10 text-[#00D1FF] border border-[#00D1FF]/20">
+                                {p.role === 'organizer' ? 'Organizador' : p.role === 'referee' ? 'Árbitro' : 'Representante'}
+                              </span>
+                              <p className="text-[11px] text-[#8E9299] font-medium block">{p.phone || 'Nenhum telefone'}</p>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <p className="font-bold text-[#E4E7EB]">
+                                {p.subscriptionPlan === 'plan_80' ? 'Camp. Único (R$80)' :
+                                 p.subscriptionPlan === 'plan_300' ? 'SaaS Gold (R$300)' :
+                                 p.subscriptionPlan === 'plan_1500' ? 'SaaS Pro (R$1.500)' :
+                                 p.subscriptionPlan === 'plan_3000' ? 'SaaS Ultimate (R$3.000)' : 'Nenhum / Free'}
+                              </p>
+                              <p className="text-[10px] text-[#8E9299] mt-0.5 font-medium">
+                                {p.subscriptionStatus === 'active' ? '✓ Plano Ativo' : 'Sem Assinatura'}
+                              </p>
+                            </td>
+                            <td className="py-3.5 px-4 text-center font-black text-white text-sm">
+                              {count}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className={`inline-block text-[10px] font-bold px-2.5 py-1 rounded-full border ${retentionBadgeClass}`}>
+                                {retentionText}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              {p.phone ? (
+                                <a
+                                  href={`https://wa.me/55${p.phone.replace(/\D/g, '')}?text=Olá%20${encodeURIComponent(p.name)},%20vimos%20seu%20cadastro%20no%20GestorFC!%20Gostaríamos%20de%20saber%20o%20que%20achou%20da%20nossa%20plataforma%20de%20gestão%20de%20campeonatos.`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[#00FF87] hover:underline"
+                                >
+                                  <Smartphone className="w-3.5 h-3.5" />
+                                  Questionar Feedback
+                                </a>
+                              ) : (
+                                <span className="text-[#8E9299] text-[11px] italic">Sem Contato</span>
+                              )}
+                            </td>
+                          </tr>
+                          
+                          {/* Nested List of user's tournaments */}
+                          {count > 0 && (
+                            <tr>
+                              <td colSpan={6} className="bg-[#121418]/50 px-6 py-4 border-b border-[#2D3139]/30">
+                                <p className="text-[10px] font-bold text-[#8E9299] uppercase tracking-wider mb-2">Histórico de Campeonatos ({count})</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {userTourneys.map(tour => {
+                                    const tourTeams = teams.filter(t => t.tournament_id === tour.id);
+                                    const tourMatches = matches.filter(m => m.tournament_id === tour.id);
+                                    return (
+                                      <div key={tour.id} className="bg-[#1A1D23] border border-[#2D3139] p-3 rounded-xl flex items-start gap-2.5 shadow-sm">
+                                        {tour.logo_url ? (
+                                          <img src={tour.logo_url} referrerPolicy="no-referrer" className="w-9 h-9 rounded-lg object-cover bg-neutral-800 shrink-0 mt-0.5 border border-[#2D3139]" />
+                                        ) : (
+                                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#00FF87] to-[#00D1FF] flex items-center justify-center text-[#0F1115] font-black italic shrink-0 mt-0.5">
+                                            🏆
+                                          </div>
+                                        )}
+                                        <div className="min-w-0 flex-1">
+                                          <p className="font-bold text-white text-[11px] truncate">{tour.name}</p>
+                                          <p className="text-[10px] text-[#8E9299] truncate mt-0.5">{tour.sport_name} • {tour.category}</p>
+                                          <div className="flex gap-2 mt-1.5 text-[9px] font-mono text-[#00D1FF] font-semibold">
+                                            <span>{tourTeams.length} Equipes</span>
+                                            <span>•</span>
+                                            <span>{tourMatches.length} Partidas</span>
+                                            <span>•</span>
+                                            <span className="text-[#00FF87]">{tour.year}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            )}
-
-            {supabaseError && (
-              <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-xs flex items-start gap-2.5 mb-6">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-semibold">Erro de Comunicação do Banco</p>
-                  <p className="opacity-90 leading-relaxed">{supabaseError}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Manual Sync Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={async () => {
-                  setSyncingToSupabase(true);
-                  setDbMessage(null);
-                  const result = await syncDataToSupabase();
-                  setSyncingToSupabase(false);
-                  setDbMessage({ type: result.success ? 'success' : 'error', text: result.message });
-                }}
-                disabled={syncingToSupabase || pullingFromSupabase}
-                className="bg-[#00FF87] text-[#0F1115] hover:bg-[#00E076] disabled:opacity-50 py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all uppercase tracking-wider"
-              >
-                <RefreshCw className={`w-4 h-4 ${syncingToSupabase ? 'animate-spin' : ''}`} />
-                {syncingToSupabase ? 'Exportando...' : 'Exportar Dados Locais para o Supabase (Upload)'}
-              </button>
-
-              <button
-                type="button"
-                onClick={async () => {
-                  if (confirm('Atenção: Isso substituirá todos os seus dados locais (campeonatos, times, jogadores e sumulas salvos no navegador) pelos dados que estão no Supabase agora. Deseja prosseguir?')) {
-                    setPullingFromSupabase(true);
-                    setDbMessage(null);
-                    const result = await pullDataFromSupabase();
-                    setPullingFromSupabase(false);
-                    setDbMessage({ type: result.success ? 'success' : 'error', text: result.message });
-                  }
-                }}
-                disabled={syncingToSupabase || pullingFromSupabase}
-                className="bg-[#16191F] border border-[#2D3139] text-white hover:bg-[#1C2029] disabled:opacity-50 py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all uppercase tracking-wider"
-              >
-                <Download className={`w-4 h-4 ${pullingFromSupabase ? 'animate-spin' : ''}`} />
-                {pullingFromSupabase ? 'Importando...' : 'Importar Dados do Supabase para Local (Download)'}
-              </button>
             </div>
-          </div>
-
-          {/* SQL Setup Instructions */}
-          <div className="bg-[#1A1D23] border border-[#2D3139] p-6 rounded-2xl">
-            <div className="flex items-center justify-between border-b border-[#2D3139] pb-4 mb-4">
-              <div>
-                <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#00FF87]" />
-                  Script de Configuração SQL (Supabase Query Editor)
-                </h4>
-                <p className="text-[11px] text-[#8E9299] mt-0.5">
-                  Copie e execute este script no console de queries do seu painel Supabase para criar todas as tabelas necessárias instantaneamente!
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const sqlText = document.getElementById('supabase-setup-sql')?.textContent || '';
-                  navigator.clipboard.writeText(sqlText);
-                  setCopiedSql(true);
-                  setTimeout(() => setCopiedSql(false), 2000);
-                }}
-                className="bg-[#16191F] border border-[#2D3139] hover:bg-[#1C2029] text-xs font-semibold px-3 py-1.5 rounded-lg text-white flex items-center gap-1.5 cursor-pointer transition-all shrink-0"
-              >
-                {copiedSql ? 'Copiado! ✓' : 'Copiar SQL'}
-              </button>
-            </div>
-
-            <pre className="p-4 bg-[#0F1115] border border-[#2D3139] rounded-xl text-[10px] sm:text-xs font-mono text-[#E4E7EB] overflow-x-auto max-h-[350px] leading-relaxed">
-              <code id="supabase-setup-sql">
-{`-- 1. Tabela de Perfis de Usuários (Donos de Torneios, Árbitros, Donos de Times)
-CREATE TABLE IF NOT EXISTS fc_profiles (
-  id TEXT PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  password TEXT NOT NULL,
-  name TEXT NOT NULL,
-  role TEXT NOT NULL,
-  phone TEXT,
-  "subscriptionStatus" TEXT,
-  "subscriptionPlan" TEXT,
-  "subscriptionExpiresAt" TEXT,
-  "tournamentsPaidCount" INTEGER DEFAULT 0
-);
-
--- 2. Tabela de Campeonatos / Torneios
-CREATE TABLE IF NOT EXISTS fc_tournaments (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  sport_name TEXT NOT NULL,
-  category TEXT NOT NULL,
-  year INTEGER NOT NULL,
-  format TEXT NOT NULL,
-  has_referees BOOLEAN NOT NULL DEFAULT true,
-  status TEXT NOT NULL DEFAULT 'active',
-  creator_id TEXT REFERENCES fc_profiles(id) ON DELETE CASCADE,
-  num_qualifiers INTEGER NOT NULL,
-  logo_url TEXT,
-  created_at TEXT NOT NULL,
-  num_groups INTEGER,
-  teams_per_group INTEGER,
-  advancement_per_group INTEGER
-);
-
--- 3. Tabela de Times Participantes
-CREATE TABLE IF NOT EXISTS fc_teams (
-  id TEXT PRIMARY KEY,
-  tournament_id TEXT REFERENCES fc_tournaments(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  logo_url TEXT NOT NULL,
-  owner_id TEXT REFERENCES fc_profiles(id) ON DELETE CASCADE,
-  category TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'pending',
-  group_name TEXT
-);
-
--- 4. Tabela de Jogadores Atletas
-CREATE TABLE IF NOT EXISTS fc_players (
-  id TEXT PRIMARY KEY,
-  team_id TEXT REFERENCES fc_teams(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  cpf TEXT NOT NULL,
-  birth_date TEXT NOT NULL,
-  photo_url TEXT,
-  validation_status TEXT NOT NULL DEFAULT 'pending',
-  validation_notes TEXT
-);
-
--- 5. Tabela de Partidas da Tabela de Jogos
-CREATE TABLE IF NOT EXISTS fc_matches (
-  id TEXT PRIMARY KEY,
-  tournament_id TEXT REFERENCES fc_tournaments(id) ON DELETE CASCADE,
-  home_team_id TEXT REFERENCES fc_teams(id) ON DELETE CASCADE,
-  away_team_id TEXT REFERENCES fc_teams(id) ON DELETE CASCADE,
-  round INTEGER NOT NULL,
-  date TEXT NOT NULL,
-  time TEXT NOT NULL,
-  location TEXT NOT NULL,
-  referee_id TEXT,
-  assistant_1_id TEXT,
-  assistant_2_id TEXT,
-  fourth_referee_id TEXT,
-  score_home INTEGER,
-  score_away INTEGER,
-  status TEXT NOT NULL DEFAULT 'scheduled',
-  sumula_written BOOLEAN NOT NULL DEFAULT false,
-  home_approved BOOLEAN NOT NULL DEFAULT false,
-  away_approved BOOLEAN NOT NULL DEFAULT false,
-  organizer_approved BOOLEAN NOT NULL DEFAULT false,
-  referee_rating_by_organizer INTEGER,
-  referee_rating_by_home INTEGER,
-  referee_rating_by_away INTEGER,
-  field_rating_by_home INTEGER,
-  field_rating_by_away INTEGER
-);
-
--- 6. Tabela de Eventos de Partida (Gols, Cartões)
-CREATE TABLE IF NOT EXISTS fc_events (
-  id TEXT PRIMARY KEY,
-  match_id TEXT REFERENCES fc_matches(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,
-  player_id TEXT NOT NULL,
-  team_id TEXT REFERENCES fc_teams(id) ON DELETE CASCADE,
-  minute INTEGER NOT NULL
-);
-
--- 7. Tabela de Convites Enviados
-CREATE TABLE IF NOT EXISTS fc_invitations (
-  id TEXT PRIMARY KEY,
-  tournament_id TEXT REFERENCES fc_tournaments(id) ON DELETE CASCADE,
-  email TEXT NOT NULL,
-  role TEXT NOT NULL,
-  team_name TEXT,
-  status TEXT NOT NULL DEFAULT 'pending',
-  created_at TEXT NOT NULL
-);
-
--- Habilitar acesso público direto para testes reais
-ALTER TABLE fc_profiles DISABLE ROW LEVEL SECURITY;
-ALTER TABLE fc_tournaments DISABLE ROW LEVEL SECURITY;
-ALTER TABLE fc_teams DISABLE ROW LEVEL SECURITY;
-ALTER TABLE fc_players DISABLE ROW LEVEL SECURITY;
-ALTER TABLE fc_matches DISABLE ROW LEVEL SECURITY;
-ALTER TABLE fc_events DISABLE ROW LEVEL SECURITY;
-ALTER TABLE fc_invitations DISABLE ROW LEVEL SECURITY;`}
-              </code>
-            </pre>
           </div>
         </div>
       )}

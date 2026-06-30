@@ -88,7 +88,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isSupabaseSynced, setIsSupabaseSynced] = useState<boolean>(false);
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('fc_autosync') === 'true';
+    return localStorage.getItem('fc_autosync') !== 'false';
   });
 
   // Load from LocalStorage or fallback to Mock Data
@@ -207,7 +207,11 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     try {
       setSupabaseError(null);
       
-      const { error: pErr } = await supabase.from('fc_profiles').upsert(profiles);
+      const safeProfiles = profiles.map(p => ({
+        ...p,
+        password: p.password || '123'
+      }));
+      const { error: pErr } = await supabase.from('fc_profiles').upsert(safeProfiles);
       if (pErr) throw pErr;
 
       const { error: tErr } = await supabase.from('fc_tournaments').upsert(tournaments);
@@ -358,8 +362,12 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     if (autoSyncEnabled) {
       // Background sync to Supabase without blocking UI
+      const safeProfiles = updatedProfiles.map(p => ({
+        ...p,
+        password: p.password || '123'
+      }));
       Promise.all([
-        supabase.from('fc_profiles').upsert(updatedProfiles),
+        supabase.from('fc_profiles').upsert(safeProfiles),
         supabase.from('fc_tournaments').upsert(updatedTournaments),
         supabase.from('fc_teams').upsert(updatedTeams),
         supabase.from('fc_players').upsert(updatedPlayers),
@@ -429,18 +437,24 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const createTournament = (tournamentData: Omit<Tournament, 'id' | 'creator_id' | 'created_at' | 'status'>) => {
-    if (!currentUser) throw new Error('Not authenticated');
+    if (!currentUser) throw new Error('Acesso negado: Você precisa obrigatoriamente criar uma conta e fazer login para criar um campeonato.');
     
-    // SaaS Plan limits check:
     const myExistingTournaments = tournaments.filter(t => t.creator_id === currentUser.id);
-    const plan = currentUser.subscriptionPlan || 'plan_80';
-    const isBasicPlan = plan === 'plan_80';
+    const hasActiveSubscription = currentUser.subscriptionStatus === 'active';
+    const plan = currentUser.subscriptionPlan || 'free';
 
-    if (isBasicPlan && myExistingTournaments.length >= 1) {
-      throw new Error('Limite Excedido: O plano de Campeonato Único (R$ 80) permite criar apenas 1 campeonato. Faça upgrade para os planos corporativos para liberar torneios adicionais.');
+    // 1st tournament is always FREE (no subscription required)
+    if (myExistingTournaments.length >= 1 && !hasActiveSubscription) {
+      throw new Error('Você já atingiu o limite de 1 campeonato gratuito de teste para novas contas. Para criar e gerenciar novos campeonatos, por favor selecione um dos nossos planos na aba Planos SaaS!');
+    }
+
+    // If they have plan_80, they can manage only 1 paid tournament (maximum of 2 in total: 1 free + 1 paid)
+    if (plan === 'plan_80' && myExistingTournaments.length >= 2) {
+      throw new Error('Limite Excedido: O plano de Campeonato Único (R$ 80) permite gerenciar apenas 1 campeonato pago por vez. Faça upgrade para os planos SaaS Gold ou Pro para gerenciar torneios adicionais ilimitados.');
     }
     
-    // R$ 80 allows points_only format with no automated referees/súmula online
+    // R$ 80 allows points_only format with no automated referees/súmula online. Free test tournament allows full features.
+    const isBasicPlan = plan === 'plan_80';
     const finalFormat = isBasicPlan ? 'points_only' : tournamentData.format;
     const finalHasReferees = isBasicPlan ? false : tournamentData.has_referees;
 
@@ -474,6 +488,13 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const sendInvitation = (invitationData: Omit<Invitation, 'id' | 'status' | 'created_at'>) => {
+    // Block invitations for teams if tournament matches have already started (any match not scheduled)
+    const tourMatches = matches.filter(m => m.tournament_id === invitationData.tournament_id);
+    const hasStarted = tourMatches.some(m => m.status !== 'scheduled');
+    if (hasStarted && invitationData.role === 'team_owner') {
+      throw new Error('Não é permitido convidar novas equipes para este campeonato, pois a primeira rodada já foi iniciada.');
+    }
+
     const newInv: Invitation = {
       ...invitationData,
       id: 'inv_' + Date.now(),
